@@ -1,0 +1,71 @@
+{% extends "learning/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="mb-4">📋 Danh Sách Từ Vựng Cần Ôn Tập</h1>
+    <p class="lead">Tổng cộng có <strong>{{ total_words }}</strong> từ cần ôn tập hôm nay.</p>
+
+    <!-- 1. BẢNG HIỂN THỊ DANH SÁCH 20 TỪ -->
+    <table class="table table-hover table-striped">
+        <thead>
+            <tr>
+                <th>STT</th>
+                <th>Từ tiếng Hàn</th>
+                <th>Nghĩa tiếng Việt</th>
+                <th>Cấp độ</th>
+                <th>Ngày ôn tập tiếp theo</th>
+                <th>Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for word in page_obj %}
+            <tr>
+                <!-- Hiển thị STT theo trang -->
+                <td>{{ forloop.counter | add:page_obj.start_index | add:"-1" }}</td>
+                <td><strong>{{ word.korean_word }}</strong></td>
+                <td>{{ word.vietnamese_meaning }}</td>
+                <td>{{ word.level }}</td>
+                <td>{{ word.next_review_date | date:"d/m/Y" }}</td>
+                <td>
+                    <!-- !!! DÒNG CODE ĐÃ SỬA: Dùng word.id để tạo URL chi tiết -->
+                    <a href="{% url 'word_detail' word_id=word.id %}" class="btn btn-sm btn-info">Ôn tập</a>
+                    <!-- NÚT MỚI: Sửa đổi bản ghi -->
+                    <a href="{% url 'word_edit' word_id=word.id %}" class="btn btn-sm btn-secondary ms-2">Sửa</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- 2. CÁC NÚT PHÂN TRANG -->
+    <nav aria-label="Phân trang">
+        <ul class="pagination justify-content-center">
+            
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1">&laquo; Trang đầu</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Trang trước</a>
+                </li>
+            {% endif %}
+
+            <!-- Vị trí trang hiện tại -->
+            <li class="page-item active" aria-current="page">
+                <span class="page-link">{{ page_obj.number }} / {{ paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Trang sau</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ paginator.num_pages }}">Trang cuối &raquo;</a>
+                </li>
+            {% endif %}
+
+        </ul>
+    </nav>
+</div>
+{% endblock content %}

@@ -1,0 +1,120 @@
+{% extends "learning/base.html" %}
+{% load static %}
+{% block title %}Ôn tập: {{ word.korean_word }}{% endblock title %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5 text-center">
+                    
+                    <h1 class="card-title display-3 text-primary mb-4">
+                        {{ word.korean_word }}
+                        {% if word.hanja %}<small class="text-muted fs-5"> ({{ word.hanja }})</small>{% endif %}
+                    </h1>
+
+                    <div class="my-4">
+                        <p class="fs-4 mb-1">Nghĩa tiếng Việt:</p>
+                        <p class="fs-2 fw-bold text-success">{{ word.vietnamese_meaning }}</p>
+                    </div>
+
+                    <hr>
+
+                    <div class="row text-start mt-4">
+                        <div class="col-md-6 mb-3">
+                            <h5 class="text-muted">Cấp độ hiện tại (SRS)</h5>
+                            <p class="fs-3 fw-bold">{{ word.level }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h5 class="text-muted">Ngày ôn tập tiếp theo</h5>
+                            <p class="fs-3 fw-bold">{{ word.next_review_date | date:"d/m/Y" }}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- CẬP NHẬT 1: LUÔN HIỂN THỊ KHUNG CÂU VÍ DỤ -->
+                    <div class="alert alert-info mt-3">
+                        <h5 class="alert-heading">Câu ví dụ</h5>
+                        <!-- Nếu có dữ liệu thì hiển thị, nếu không thì hiển thị dòng trống/placeholder -->
+                        <p class="mb-0 fst-italic">
+                            {% if word.example_sentence %}
+                                {{ word.example_sentence }}
+                            {% else %}
+                                <span class="text-muted">Chưa có câu ví dụ.</span>
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <!-- CẬP NHẬT 2: LUÔN HIỂN THỊ KHUNG GHI CHÚ -->
+                    <div class="card bg-light p-3 mt-3">
+                        <h5 class="text-muted mb-2">Ghi chú cá nhân</h5>
+                        <!-- Nếu có dữ liệu thì hiển thị, nếu không thì hiển thị dòng trống/placeholder -->
+                        <p class="mb-0">
+                            {% if word.notes %}
+                                {{ word.notes }}
+                            {% else %}
+                                <span class="text-muted">Chưa có ghi chú.</span>
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <!-- Khu vực dành cho các nút XÁC NHẬN KẾT QUẢ ÔN TẬP -->
+                    <div class="mt-5">
+                        <p class="lead fw-bold">Bạn đã nhớ từ này chưa?</p>
+                        <!-- Nút gọi hàm JavaScript để gửi kết quả ôn tập (POST API) -->
+                        <button type="button" class="btn btn-success btn-lg me-3" onclick="handleReview('{{ word.id }}', 'correct')">Đã Nhớ (Chính xác)</button>
+                        <button type="button" class="btn btn-danger btn-lg" onclick="handleReview('{{ word.id }}', 'incorrect')">Chưa Nhớ (Sai)</button>
+                    </div>
+
+                    <a href="{% url 'review_session' %}" class="btn btn-outline-secondary mt-4">
+                        &larr; Quay lại Danh sách ôn tập
+                    </a>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    function handleReview(wordId, result) {
+        // Tạo URL API. Thay thế PLACEHOLDER_ID và PLACEHOLDER_RESULT bằng giá trị thực.
+        const apiUrl = "{% url 'check_word' word_id='PLACEHOLDER_ID' result='PLACEHOLDER_RESULT' %}".replace('PLACEHOLDER_ID', wordId).replace('PLACEHOLDER_RESULT', result);
+
+        fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                // Cần có token CSRF để POST request hoạt động trong Django
+                // Đảm bảo bạn đã thêm {% csrf_token %} trong form hoặc trong base template
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({ 
+                word_id: wordId, 
+                result: result 
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(errorData => { throw new Error(errorData.error || `HTTP error! status: ${response.status}`); });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Thông báo thành công và chuyển hướng
+                alert(`Cập nhật thành công! Cấp độ mới: ${data.new_level}. Ôn tập lại vào ngày: ${new Date(data.next_review_date).toLocaleDateString()}.`);
+                window.location.href = "{% url 'review_session' %}";
+            } else {
+                alert(`Lỗi cập nhật: ${data.error}`);
+            }
+        })
+        .catch(error => {
+            console.error('Lỗi khi gửi kết quả ôn tập:', error);
+            alert(`Đã xảy ra lỗi: ${error.message}`);
+        });
+    }
+</script>
+{% endblock scripts %}
+{% endblock content %}
