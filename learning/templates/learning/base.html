@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Học Từ Vựng Hàn - SRS</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f9; }
+        .container { width: 80%; margin: 20px auto; background: white; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .nav a { margin-right: 15px; text-decoration: none; color: #333; }
+        .nav { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .errorlist { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav">
+            {% if user.is_authenticated %}
+                Xin chào, <strong>{{ user.full_name|default:user.email }}</strong>! |
+                <a href="{% url 'home' %}">Dashboard</a> |
+                <a href="{% url 'add_vocabulary' %}">Thêm từ</a> |
+                <a href="{% url 'review_session' %}">Ôn tập (SRS)</a> |
+                <a href="{% url 'logout' %}">Đăng xuất</a>
+            {% else %}
+                <a href="{% url 'login' %}">Đăng nhập</a> |
+                <a href="{% url 'register' %}">Đăng ký</a>
+            {% endif %}
+        </div>
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

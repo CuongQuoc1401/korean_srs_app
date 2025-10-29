@@ -1,0 +1,22 @@
+{% extends "learning/base.html" %}
+
+{% block content %}
+    <h2>🔑 Đăng Nhập</h2>
+    
+    <form method="post">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="errorlist">
+                {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        {{ form.as_p }}
+        
+        <button type="submit" style="padding: 10px 15px; background-color: #ffc107; color: black; border: none; cursor: pointer; border-radius: 3px;">Đăng Nhập</button>
+    </form>
+
+    <p style="margin-top: 15px;">Chưa có tài khoản? <a href="{% url 'register' %}">Đăng ký tại đây</a></p>
+{% endblock content %}

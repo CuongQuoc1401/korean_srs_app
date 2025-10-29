@@ -1,0 +1,70 @@
+{% extends "learning/base.html" %}
+
+{% block content %}
+    <h2>📝 Ôn Tập Từ Vựng</h2>
+
+    {% if word %}
+        <p>Còn lại: <strong>{{ remaining_count|add:1 }}</strong> từ cần ôn tập hôm nay.</p>
+        
+        <div id="word-card">
+            <h3>{{ word.korean_word }}</h3>
+            
+            <button onclick="showAnswer()">Xem Nghĩa</button>
+            
+            <div id="answer-details" style="display:none; border: 1px solid #ccc; padding: 15px; margin-top: 10px;">
+                <p><strong>Nghĩa:</strong> {{ word.vietnamese_meaning }}</p>
+                <p><strong>Hán tự:</strong> {{ word.hanja|default:"Không có" }}</p>
+                <p><strong>Ví dụ:</strong> {{ word.example_sentence|default:"Không có" }}</p>
+                <p><strong>Ghi chú:</strong> {{ word.notes|default:"Không có" }}</p>
+                <p><strong>Cấp độ hiện tại:</strong> Cấp {{ word.level }}</p>
+
+                <hr>
+
+                <h4>Bạn trả lời:</h4>
+                <button onclick="recordAnswer('{{ word.id }}', 'correct')" style="background-color: green; color: white; padding: 10px;">✅ Đúng</button>
+                <button onclick="recordAnswer('{{ word.id }}', 'wrong')" style="background-color: red; color: white; padding: 10px;">❌ Sai</button>
+            </div>
+        </div>
+        <div id="message-area" style="margin-top: 15px; font-weight: bold;"></div>
+
+    {% else %}
+        {% include "learning/review_done.html" %}
+    {% endif %}
+
+    <script>
+        function showAnswer() {
+            document.getElementById('answer-details').style.display = 'block';
+            document.querySelector('button[onclick="showAnswer()"]').style.display = 'none';
+        }
+
+        function recordAnswer(wordId, result) {
+            // Chặn người dùng nhấn nhiều lần
+            document.getElementById('answer-details').style.pointerEvents = 'none';
+
+            fetch(`{% url 'check_word' word_id='REPLACE_ID' result='REPLACE_RESULT' %}`.replace('REPLACE_ID', wordId).replace('REPLACE_RESULT', result))
+                .then(response => response.json())
+                .then(data => {
+                    const messageArea = document.getElementById('message-area');
+                    if (data.success) {
+                        messageArea.style.color = 'blue';
+                        messageArea.innerHTML = data.message + ' Tải từ tiếp theo...';
+                        
+                        // Tải lại trang sau 2 giây để lấy từ tiếp theo
+                        setTimeout(() => {
+                            window.location.reload(); 
+                        }, 2000);
+                        
+                    } else {
+                        messageArea.style.color = 'red';
+                        messageArea.innerHTML = 'Lỗi: ' + data.error;
+                        document.getElementById('answer-details').style.pointerEvents = 'auto'; // Cho phép nhấn lại nếu lỗi
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('message-area').innerHTML = 'Có lỗi xảy ra khi kết nối.';
+                    document.getElementById('answer-details').style.pointerEvents = 'auto';
+                });
+        }
+    </script>
+{% endblock content %}
