@@ -1,9 +1,6 @@
 venv/
 .env
 note.txt
-settings.py
-config/settings.py
-config/settings_local.py
 db.sqlite3
 media/
 
