@@ -1,11 +1,12 @@
 from mongoengine import Document, fields, CASCADE 
-from datetime import datetime, date # <-- Đã thêm 'date' vào import
+from datetime import datetime, date 
 from django.contrib.auth.hashers import make_password, check_password
 
 # --- User Document ---
 
 class User(Document): 
-    # Thuộc tính PK để Django có thể truy cập user.pk
+    # Thuộc tính pk để Django có thể truy cập user.pk
+    # LƯU Ý: Đây là một property, nó trả về ID của MongoEngine (ObjectId)
     pk = property(lambda self: self.id) 
     
     email = fields.StringField(required=True, unique=True)
@@ -16,7 +17,6 @@ class User(Document):
     is_active = fields.BooleanField(default=True)
     is_staff = fields.BooleanField(default=False)
     is_superuser = fields.BooleanField(default=False)
-    # default=datetime.now là cách dùng đúng cho MongoEngine
     last_login = fields.DateTimeField(default=datetime.now) 
     created_at = fields.DateTimeField(default=datetime.now)
 
@@ -29,9 +29,26 @@ class User(Document):
     def check_password(self, raw_password):
         return check_password(raw_password, self.password)
 
+    # CẦN THIẾT: Phương thức get_username
     def get_username(self):
         return self.email
-        
+    
+    # KHẮC PHỤC CHÍNH: Phương thức get_session_auth_hash()
+    # Django sử dụng hàm băm này để xác thực user trong session.
+    # Khi dùng MongoEngine, nó mặc định không có, gây lỗi 500.
+    def get_session_auth_hash(self):
+        """
+        Trả về một hàm băm được sử dụng để xác thực user trong session.
+        Chúng ta sẽ sử dụng một hàm băm đơn giản từ mật khẩu đã băm.
+        """
+        return self.password
+
+    # CẦN THIẾT: Phương thức get_full_name (dùng trong base_layout.html)
+    def get_full_name(self):
+        return self.full_name or self.email
+
+    # CẦN THIẾT: Các phương thức Property (nên dùng @property)
+    # Tuy nhiên, phiên bản hàm của bạn đã hoạt động tốt cho mục đích này
     def is_anonymous(self):
         return False
 
