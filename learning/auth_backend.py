@@ -1,6 +1,6 @@
 # File: learning/auth_backend.py
 
-import datetime
+from datetime import datetime
 from .documents import User
 from django.contrib.auth.backends import BaseBackend
 

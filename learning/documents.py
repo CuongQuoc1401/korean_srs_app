@@ -1,7 +1,5 @@
-# File: learning/documents.py
-
 from mongoengine import Document, fields, CASCADE 
-from datetime import datetime
+from datetime import datetime, date # <-- Đã thêm 'date' vào import
 from django.contrib.auth.hashers import make_password, check_password
 
 # --- User Document ---
@@ -18,6 +16,7 @@ class User(Document):
     is_active = fields.BooleanField(default=True)
     is_staff = fields.BooleanField(default=False)
     is_superuser = fields.BooleanField(default=False)
+    # default=datetime.now là cách dùng đúng cho MongoEngine
     last_login = fields.DateTimeField(default=datetime.now) 
     created_at = fields.DateTimeField(default=datetime.now)
 
@@ -61,7 +60,8 @@ class Vocabulary(Document):
     
     # Các trường Spaced Repetition
     level = fields.IntField(default=1) 
-    next_review_date = fields.DateField(default=datetime.now().date()) 
+    # KHẮC PHỤC: Sử dụng lambda để gọi date.today() MỖI KHI document mới được tạo
+    next_review_date = fields.DateField(default=lambda: date.today()) 
     last_reviewed_at = fields.DateTimeField(default=datetime.now)
     current_interval_days = fields.IntField(default=1) 
     consecutive_correct_count = fields.IntField(default=0)
