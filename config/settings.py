@@ -41,16 +41,20 @@ INSTALLED_APPS = [
     # Django Built-in Apps
     'django.contrib.admin',
     'django.contrib.auth',
+    # KHẮC PHỤC: PHẢI THÊM LẠI CONTENTTYPES VÌ ADMIN PHỤ THUỘC VÀO NÓ
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
-    # ĐÃ XÓA 'django_mongoengine' vì nó không tương thích với Django 4.2
-    
     # Custom Apps
     'learning.apps.LearningConfig',
 ]
+
+# Thêm biến này để nói với Django không sử dụng Permission/ContentType trong Auth
+# Dù không phải cách chính thức, đây là giải pháp phổ biến nhất khi dùng MongoEngine
+DISABLE_AUTH_PERMISSIONS = True 
+
 
 MIDDLEWARE = [
     # 1. Django Security
@@ -106,22 +110,18 @@ DATABASES = {
 }
 
 # CẤU HÌNH MONGOENGINE (Cách chính thức để MongoEngine tự kết nối)
-# Việc này an toàn hơn so với việc gọi connect() trực tiếp.
 MONGOENGINE_DATABASES = {
     'default': {
         'host': MONGO_URI,
     }
 }
 
-# THIẾT LẬP KẾT NỐI MONGOENGINE THỦ CÔNG
-# ĐÃ XÓA mongoengine.connect() trực tiếp khỏi settings.py để tránh lỗi fork.
-# Kết nối sẽ được gọi trong learning/apps.py
-# mongoengine.connect(host=MONGO_URI) # <--- Đã bị loại bỏ
-
 # Cấu hình User và Backend cho MongoEngine
 MONGOENGINE_USER_DOCUMENT = 'learning.documents.User' 
 AUTHENTICATION_BACKENDS = (
     'learning.auth_backend.CustomMongoEngineBackend', 
+    # KHẮC PHỤC: VÔ HIỆU HÓA MODEL BACKEND MẶC ĐỊNH
+    # 'django.contrib.auth.backends.ModelBackend',
 )
 
 # Thêm path cho LOGIN
