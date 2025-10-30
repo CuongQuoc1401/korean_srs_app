@@ -10,16 +10,14 @@ logger = logging.getLogger(__name__)
 
 def connect_mongoengine():
     """
-    Hàm kết nối an toàn cho môi trường Gunicorn/forking và Local.
+    Hàm kết nối an toàn cho môi trường Local (runserver).
     """
     try:
-        # Trong MongoEngine, connect() sẽ tự động ngắt kết nối cũ nếu cùng alias.
-        # Tuy nhiên, để an toàn hơn, chúng ta gọi disconnect rõ ràng.
+        # Ngắt kết nối cũ nếu có
         try:
             mongoengine.disconnect(alias='default') 
             logger.info("Disconnected old MongoEngine connection (if it existed).")
         except Exception:
-            # Bỏ qua nếu không thể disconnect (vì nó chưa connect)
             pass
 
         mongo_uri = settings.MONGO_URI
@@ -30,16 +28,16 @@ def connect_mongoengine():
             alias='default', 
             maxPoolSize=50, 
             serverSelectionTimeoutMS=5000,
+            readPreference='secondaryPreferred' 
         )
         
         logger.info("MongoEngine connected successfully.")
 
     except Exception as e:
-        # Nếu kết nối thất bại, log lỗi chi tiết
         logger.error(f"Failed to connect MongoEngine: {e}")
-        # Reraise exception nếu không phải do Autoreloader để đảm bảo lỗi được thấy
-        if 'You have not defined a default connection' in str(e):
-             logger.error("HINT: MONGO_URI might be incorrect or missing.")
+        # Không raise exception ở đây để Django Autoreloader có thể tiếp tục
+        # Trong Production, lỗi này sẽ được xử lý bởi Gunicorn/post_fork.
+        pass
 
 class LearningConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
@@ -47,20 +45,18 @@ class LearningConfig(AppConfig):
     
     def ready(self):
         """
-        Thiết lập kết nối an toàn sau khi Django đã sẵn sàng.
+        Thiết lập kết nối. Chỉ kết nối trong runserver, không kết nối trong Gunicorn/Production.
+        Gunicorn sẽ sử dụng hook `post_fork` để kết nối an toàn.
         """
-        # Kiểm tra nếu đây là process chính của Autoreloader
-        is_reloader_process = os.environ.get('RUN_MAIN') == 'true'
+        # Kiểm tra nếu chúng ta đang chạy trong môi trường Django Development Server (runserver)
+        # Bằng cách kiểm tra sự tồn tại của biến môi trường do runserver tạo ra.
+        is_running_main = os.environ.get('RUN_MAIN') or os.environ.get('WERKZEUG_RUN_MAIN')
         
-        if settings.DEBUG:
-            # Ở chế độ DEBUG, chỉ kết nối trong process chính (không phải reloader phụ)
-            if is_reloader_process or not os.environ.get('RUN_MAIN'):
-                connect_mongoengine()
-        else:
-            # Ở Production, kết nối ngay lập tức
+        if settings.DEBUG and is_running_main:
+            # Chỉ kết nối ở local development server (chỉ 1 lần trong master process của runserver)
             connect_mongoengine()
             
-        # Import documents sau khi kết nối đã sẵn sàng
+        # Import documents
         try:
             from . import documents 
         except Exception as e:
