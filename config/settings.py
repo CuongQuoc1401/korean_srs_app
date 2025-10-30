@@ -20,6 +20,7 @@ if DEBUG:
     ALLOWED_HOSTS = []
 else:
     # Cho phép tất cả host (nên thay bằng tên miền cụ thể khi deploy)
+    # RENDER_EXTERNAL_HOSTNAME sẽ là tên miền Render của bạn.
     ALLOWED_HOSTS = ['*'] 
 
 
@@ -36,7 +37,10 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # (A) THÊM WHITENOISE LÊN ĐẦU, NGAY SAU SecurityMiddleware
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -94,6 +98,10 @@ try:
 except Exception as e:
     # In lỗi ra console nếu không kết nối được (Quan trọng cho Dev/Deploy)
     print(f"Lỗi kết nối MongoDB: {e}")
+    # Nếu không kết nối được DB mà DEBUG=False, ứng dụng sẽ không thể hoạt động.
+    # Thêm dòng này để dễ dàng thấy lỗi trong Production log
+    if not DEBUG:
+        raise ConnectionError(f"Không thể kết nối MongoDB: {e}")
 
 
 # Cấu hình User và Backend
@@ -138,6 +146,8 @@ STATIC_URL = 'static/'
 if not DEBUG:
     import os
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+    # (B) Cấu hình WhiteNoise để nén và cache tệp tĩnh (Tùy chọn nhưng nên có)
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 
 # Default primary key field type

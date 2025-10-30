@@ -4,3 +4,4 @@ dnspython~=2.3.0
 pymongo~=3.12.0
 python-decouple~=3.6
 gunicorn~=20.1.0
+whitenois~=6.4.0
