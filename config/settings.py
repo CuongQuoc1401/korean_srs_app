@@ -12,6 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Đọc DEBUG từ biến môi trường, mặc định là False nếu không tìm thấy.
+# Đảm bảo ép kiểu sang bool để xử lý chuỗi 'False' hoặc 'True' từ ENV
 DEBUG = config('DEBUG', default=False, cast=bool) 
 
 if DEBUG:
@@ -21,6 +22,7 @@ if DEBUG:
     MONGO_URI = config('MONGO_URI', default='mongodb://localhost:27017/korean_srs_local')
 else:
     # Đọc SECRET_KEY và MONGO_URI từ biến môi trường Render
+    # Trong môi trường Production, KHÔNG cung cấp giá trị default
     SECRET_KEY = config('SECRET_KEY') 
     MONGO_URI = config('MONGO_URI')
 
@@ -32,7 +34,7 @@ if DEBUG:
     ALLOWED_HOSTS = []
 else:
     # Cho phép tất cả host khi deploy trên Render (nên thay bằng tên miền cụ thể khi có thể)
-    ALLOWED_HOSTS = ['*', '0.0.0.0'] 
+    ALLOWED_HOSTS = ['*', '0.0.0.0', 'korean-srs-app.onrender.com'] 
 
 
 # Application definition
