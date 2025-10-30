@@ -1,62 +1,62 @@
-from datetime import datetime
-from .documents import User
 from django.contrib.auth.backends import BaseBackend
-# Thêm import ObjectId để bắt lỗi
-from bson.errors import InvalidId 
-# Thêm import mongoengine để bắt lỗi Connection/Query
-import mongoengine 
+from .documents import User # Import model User của MongoEngine
+from bson import ObjectId
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CustomMongoEngineBackend(BaseBackend):
-    def authenticate(self, request, username=None, password=None, **kwargs):
-        try:
-            # 1. Tìm kiếm người dùng bằng email
-            user = User.objects.get(email=username)
-        except User.DoesNotExist:
-            # Nếu người dùng không tồn tại, trả về None (Django xử lý)
-            return None
-        except mongoengine.errors.ConnectionError as e:
-            # Lỗi kết nối DB
-            print(f"LỖI KẾT NỐI MONGO DB TRONG AUTHENTICATE: {e}")
-            raise
-        except Exception as e:
-            # Ghi nhật ký lỗi truy vấn DB tổng quát
-            print(f"Lỗi truy vấn MongoDB trong authenticate: {e}")
-            raise # Ném lại lỗi để hệ thống ghi nhận traceback
+    """
+    Custom Authentication Backend cho phép Django sử dụng MongoEngine User model
+    được lưu trữ trong MongoDB.
+    """
 
-        if user.is_active and user.check_password(password):
-            try:
-                # 2. Cập nhật thời gian đăng nhập lần cuối
-                user.last_login = datetime.now()
-                user.save()
-            except Exception as e:
-                # Ghi nhật ký lỗi khi lưu user
-                print(f"Lỗi khi lưu user sau đăng nhập: {e}")
-                raise 
-                
-            return user
+    def authenticate(self, request, username=None, password=None):
+        """
+        Xác thực người dùng bằng email (username) và mật khẩu.
+        """
+        if username is None or password is None:
+            # Nếu username hoặc password bị thiếu, không thể xác thực
+            return None
+
+        try:
+            # Tìm kiếm người dùng dựa trên email
+            user = User.objects(email=username).first()
+        except Exception as e:
+            logger.error(f"Lỗi khi truy vấn User từ MongoDB: {e}")
+            return None
+
+        if user:
+            # Kiểm tra mật khẩu (hàm check_password đã được MongoEngine thêm vào User)
+            if user.check_password(password) and user.is_active:
+                logger.debug(f"Xác thực thành công cho user: {user.email}")
+                return user
+            else:
+                logger.warning(f"Xác thực thất bại cho user: {user.email} (mật khẩu sai hoặc tài khoản không hoạt động)")
+                return None
+        
+        logger.warning(f"Không tìm thấy User với email: {username}")
         return None
 
     def get_user(self, user_id):
-        # user_id là ID (pk) của user được lưu trong session (ObjectId string)
-        try:
-            # BẮT BUỘC: Bắt lỗi InvalidId khi Django cố gắng ép kiểu ID
-            return User.objects.with_id(user_id) 
-        except InvalidId:
-            # Lỗi thường xảy ra khi user_id không phải là ObjectId hợp lệ
-            print(f"Lỗi ID không hợp lệ (InvalidId) cho user_id: {user_id}")
+        """
+        Lấy đối tượng User (document) dựa trên user_id (được lưu trong session).
+        user_id ở đây là ObjectId dạng chuỗi.
+        """
+        if not user_id:
             return None
-        except mongoengine.errors.ConnectionError as e:
-            print(f"LỖI KẾT NỐI MONGO DB TRONG GET_USER: {e}")
-            return None
-        except Exception as e:
-            # Lỗi khi tìm user từ session
-            print(f"Lỗi truy vấn MongoDB trong get_user: {e}")
-            return None
-            
-    def get_user_model(self):
-        # Trả về User Document của bạn
-        return User
 
-    def get_user_id(self, user):
-        # Trả về ID dưới dạng string.
-        return str(user.id)
+        try:
+            # Chuyển đổi user_id sang ObjectId trước khi truy vấn
+            object_id = ObjectId(str(user_id))
+        except Exception as e:
+            logger.error(f"User ID {user_id} không phải là ObjectId hợp lệ: {e}")
+            return None
+
+        try:
+            # Tìm kiếm người dùng theo ObjectId
+            user = User.objects(id=object_id).first()
+            return user
+        except Exception as e:
+            logger.error(f"Lỗi khi lấy User theo ID {user_id}: {e}")
+            return None
