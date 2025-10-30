@@ -20,8 +20,8 @@ if DEBUG:
     ALLOWED_HOSTS = []
 else:
     # Cho phép tất cả host (nên thay bằng tên miền cụ thể khi deploy)
-    # RENDER_EXTERNAL_HOSTNAME sẽ là tên miền Render của bạn.
-    ALLOWED_HOSTS = ['*'] 
+    # Thêm '0.0.0.0' để đảm bảo Render nhận ra.
+    ALLOWED_HOSTS = ['*', '0.0.0.0'] 
 
 
 # Application definition
@@ -90,19 +90,14 @@ DATABASES = {
 # (5) Đọc MONGO_URI từ biến môi trường
 MONGO_URI = config('MONGO_URI')
 
-try:
-    mongoengine.connect(
-        host=MONGO_URI,
-        alias="default"
-    )
-except Exception as e:
-    # In lỗi ra console nếu không kết nối được (Quan trọng cho Dev/Deploy)
-    print(f"Lỗi kết nối MongoDB: {e}")
-    # Nếu không kết nối được DB mà DEBUG=False, ứng dụng sẽ không thể hoạt động.
-    # Thêm dòng này để dễ dàng thấy lỗi trong Production log
-    if not DEBUG:
-        raise ConnectionError(f"Không thể kết nối MongoDB: {e}")
-
+# FIX LỖI: MongoClient opened before fork (Lỗi 500 khi sử dụng DB trong Production/Gunicorn)
+# Loại bỏ khối try/except kết nối sớm. Thay thế bằng kết nối LAZY để Gunicorn 
+# tạo worker trước khi mỗi worker tự thiết lập kết nối an toàn.
+mongoengine.connect(
+    host=MONGO_URI,
+    alias="default",
+    lazy=True # <--- THAY ĐỔI QUAN TRỌNG NHẤT CHO DEPLOYMENT
+)
 
 # Cấu hình User và Backend
 MONGOENGINE_USER_DOCUMENT = 'learning.documents.User' 
