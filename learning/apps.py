@@ -6,28 +6,40 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-# Đặt biến cờ (flag) để theo dõi trạng thái kết nối
-_is_connected = False
-
 def connect_mongoengine():
-    global _is_connected
-    # Chỉ kết nối nếu chưa được kết nối
-    if not _is_connected:
-        try:
-            # Lấy MONGO_URI từ settings.py
-            mongo_uri = settings.MONGO_URI
-            
-            # Kết nối an toàn (dùng alias 'default' đã định nghĩa trong settings)
-            mongoengine.connect(host=mongo_uri, alias='default', connect=False)
-            
-            # Kiểm tra kết nối và thiết lập kết nối thực tế
-            mongoengine.get_connection('default').connect()
-            
-            _is_connected = True
-            logger.info("MongoEngine connected successfully.")
-        except Exception as e:
-            logger.error(f"Failed to connect MongoEngine: {e}")
-            # Nếu kết nối thất bại, _is_connected vẫn là False
+    """
+    Hàm này được gọi bởi mỗi Gunicorn worker để thiết lập kết nối MongoEngine
+    một cách an toàn trong môi trường đa luồng.
+    """
+    try:
+        # Nếu đã có kết nối 'default' và nó đang mở, đóng nó.
+        # Điều này là rất quan trọng trong môi trường Gunicorn/forking.
+        if 'default' in mongoengine.connections._connections:
+            try:
+                mongoengine.disconnect(alias='default')
+                logger.info("Disconnected old MongoEngine connection.")
+            except Exception:
+                # Bỏ qua lỗi nếu việc ngắt kết nối thất bại
+                pass
+
+        # Lấy MONGO_URI từ settings.py
+        mongo_uri = settings.MONGO_URI
+        
+        # Thiết lập kết nối mới
+        mongoengine.connect(
+            host=mongo_uri, 
+            alias='default', 
+            # Đảm bảo kết nối được thiết lập ngay lập tức
+            connect=True,
+            # Tùy chọn để tối ưu hóa kết nối
+            maxPoolSize=50, 
+            serverSelectionTimeoutMS=5000,
+        )
+        
+        logger.info("MongoEngine connected successfully to new process.")
+
+    except Exception as e:
+        logger.error(f"Failed to connect MongoEngine in worker process: {e}")
 
 class LearningConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
@@ -39,18 +51,20 @@ class LearningConfig(AppConfig):
         Nó đảm bảo kết nối được thiết lập sau khi Django đã sẵn sàng.
         """
         if not settings.DEBUG:
-            # Trong Production, kết nối ngay lập tức
+            # Trong Production (Render): Gọi kết nối an toàn cho mỗi process/worker
             connect_mongoengine()
         else:
-            # Trong chế độ DEBUG, cần thận trọng hơn với Autoreloader
+            # Trong chế độ DEBUG (Local runserver): 
+            # Dùng logic kiểm tra autoreload để tránh kết nối hai lần, 
+            # dù việc này không bắt buộc nhưng giữ lại cho hiệu suất.
             import os
-            # Django Autoreloader chạy `ready()` hai lần. Chỉ chạy kết nối ở lần thứ nhất.
             is_master = os.environ.get('RUN_MAIN') or os.environ.get('DJANGO_SETTINGS_MODULE')
             if is_master:
                 connect_mongoengine()
 
         # Import các models/documents sau khi kết nối đã sẵn sàng
         try:
-            from . import documents # Chỉ import sau khi MongoEngine sẵn sàng
+            # Import documents để các models được register với MongoEngine
+            from . import documents 
         except Exception as e:
             logger.error(f"Failed to import documents: {e}")
