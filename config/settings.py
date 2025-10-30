@@ -114,9 +114,9 @@ MONGOENGINE_DATABASES = {
 }
 
 # THIẾT LẬP KẾT NỐI MONGOENGINE THỦ CÔNG
-# Khi không dùng django-mongoengine, ta cần gọi connect() hoặc register_connection() 
-# để kích hoạt kết nối đã cấu hình ở trên.
-mongoengine.connect(host=MONGO_URI)
+# ĐÃ XÓA mongoengine.connect() trực tiếp khỏi settings.py để tránh lỗi fork.
+# Kết nối sẽ được gọi trong learning/apps.py
+# mongoengine.connect(host=MONGO_URI) # <--- Đã bị loại bỏ
 
 # Cấu hình User và Backend cho MongoEngine
 MONGOENGINE_USER_DOCUMENT = 'learning.documents.User' 
