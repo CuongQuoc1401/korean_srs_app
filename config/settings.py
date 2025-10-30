@@ -118,6 +118,26 @@ MONGOENGINE_DATABASES = {
     }
 }
 
+# --- DEBUGGING: BẮT BUỘC THỰC HIỆN KẾT NỐI SỚM ĐỂ BẮT LỖI ---
+# Dùng thư viện mongoengine trực tiếp để kết nối và kiểm tra URI.
+if MONGO_URI:
+    try:
+        # Tên database thường là phần cuối cùng của chuỗi URI trước dấu '?'
+        db_name = MONGO_URI.split('/')[-1].split('?')[0]
+        # Sử dụng connect() để buộc kiểm tra kết nối ngay khi file settings được đọc
+        mongoengine.connect(host=MONGO_URI, db=db_name)
+        print(f"✅ Kết nối MongoDB thành công với DB: {db_name}")
+    except Exception as e:
+        # Nếu DEBUG=True, ta cho phép nó crash để thấy lỗi chi tiết
+        if DEBUG:
+            raise Exception(f"LỖI KHỞI TẠO MONGODB (LOCAL/DEV): {e}") 
+        # Nếu DEBUG=False (Production), ta ghi log và không làm crash máy chủ ngay lập tức
+        # nhưng lỗi này sẽ xuất hiện rõ ràng trong log Render.
+        else:
+            print(f"❌ LỖI KẾT NỐI MONGODB (RENDER/PROD): Vui lòng kiểm tra MONGO_URI và Network Access. Lỗi: {e}")
+# -------------------------------------------------------------
+
+
 # Cấu hình User và Backend cho MongoEngine
 MONGOENGINE_USER_DOCUMENT = 'learning.documents.User' 
 AUTHENTICATION_BACKENDS = (
